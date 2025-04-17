@@ -21,3 +21,28 @@ node_modules
 
 # cli
 dist
+
+# env
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# hardhat
+packages/hardhat/deployments
+packages/hardhat/cache
+packages/hardhat/artifacts
+packages/hardhat/typechain
+packages/hardhat/cache
+
+# subgraph
+packages/subgraph/abis
+packages/subgraph/build
+packages/subgraph/generated
+packages/subgraph/node_modules
+packages/subgraph/src/schema.graphql
+
+# nextjs
+packages/nextjs/contracts/deployedContracts.ts
+packages/nextjs/.next
