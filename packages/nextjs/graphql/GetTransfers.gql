@@ -1,0 +1,11 @@
+query GetTransfers {
+  transfers(first: 25, orderBy: id, orderDirection: asc) {
+    blockNumber
+    blockTimestamp
+    from
+    id
+    to
+    transactionHash
+    value
+  }
+}

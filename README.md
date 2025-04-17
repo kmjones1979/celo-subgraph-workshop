@@ -103,8 +103,8 @@ To get started with Scaffold-ETH 2, follow the steps below:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your-org/mega-eth-subgraph-workshop.git
-cd mega-eth-subgraph-workshop
+git clone https://github.com/kmjones1979/celo-subgraph-workshop.git
+cd celo-subgraph-workshop
 ```
 
 2. Install dependencies:
@@ -254,6 +254,85 @@ query MyQuery {
         ]
     }
 }
+```
+
+## Environment Configuration
+
+Before deploying or verifying contracts, you need to set up your environment variables. Create a `.env` file in the root directory:
+
+```bash
+# Get your API key from https://celoscan.io/myapikey
+CELOSCAN_API_KEY=your_api_key_here
+```
+
+To get your Celoscan API key:
+
+1. Visit [Celoscan](https://celoscan.io)
+2. Create an account or sign in
+3. Go to your account's API key section
+4. Generate a new API key
+5. Copy the key into your `.env` file
+
+The same API key works for both mainnet (celoscan.io) and testnet (alfajores.celoscan.io).
+
+## Network Configuration
+
+### Hardhat Configuration
+
+The `hardhat.config.ts` file is already configured for both Celo mainnet and Alfajores testnet. Here's the relevant configuration:
+
+```typescript
+networks: {
+  celo: {
+    url: "https://forno.celo.org",
+    accounts: [deployerPrivateKey],
+    verify: {
+      etherscan: {
+        apiUrl: "https://api.celoscan.io",
+        apiKey: process.env.CELOSCAN_API_KEY || "",
+      },
+    },
+  },
+  celoAlfajores: {
+    url: "https://alfajores-forno.celo-testnet.org",
+    accounts: [deployerPrivateKey],
+    verify: {
+      etherscan: {
+        apiUrl: "https://api-alfajores.celoscan.io",
+        apiKey: process.env.CELOSCAN_API_KEY || "",
+      },
+    },
+  },
+},
+```
+
+This configuration includes:
+
+-   Network RPC endpoints
+-   Account configuration using the deployer's private key
+-   Contract verification settings for Celoscan
+-   API configurations for both mainnet and testnet
+
+### Frontend Configuration
+
+To configure the frontend to use Celo networks, update the `packages/nextjs/scaffold.config.ts` file:
+
+```typescript
+targetNetworks: [chains.celoAlfajores], // Use this for Alfajores testnet
+// or
+targetNetworks: [chains.celo], // Use this for mainnet
+```
+
+This configuration:
+
+-   Determines which network(s) your frontend will connect to
+-   Sets up the correct RPC endpoints and chain parameters
+-   Configures the network switching in the UI
+
+You can also configure multiple networks simultaneously:
+
+```typescript
+targetNetworks: [chains.celo, chains.celoAlfajores],
 ```
 
 ## Deploying to Celo Alfajores Testnet
@@ -528,3 +607,366 @@ Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob
 -   Read the [Scaffold-ETH 2 Documentation](https://docs.scaffoldeth.io)
 -   Join our [Telegram Community](https://t.me/graphhackers)
 -   Open an [Issue](https://github.com/your-org/mega-eth-subgraph-workshop/issues)
+
+## Using The Graph in Your NextJS App
+
+### Generating Graph Client Artifacts
+
+After deploying your subgraph, you'll need to generate the client-side artifacts:
+
+```bash
+cd packages/nextjs
+yarn graphclient build
+```
+
+This command generates type-safe queries based on your subgraph schema.
+
+### Example Query Implementation
+
+In your NextJS components, you can use the generated artifacts to query your subgraph. Here's an example implementation:
+
+```typescript
+// In your component file (e.g., packages/nextjs/components/transfers/TransfersTable.tsx)
+import { useGraphClient } from "~~/services/graph/hook";
+import { formatEther } from "viem";
+
+export const TransfersTable = () => {
+    const { data: transfers } = useGraphClient().useTransfersQuery();
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+                <h3 className="text-lg font-medium">Recent Transfers</h3>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="table bg-base-100 table-zebra">
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Value</th>
+                            <th>Block Number</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {transfers?.transfers.map((transfer, i) => (
+                            <tr key={i}>
+                                <td>{transfer.from}</td>
+                                <td>{transfer.to}</td>
+                                <td>
+                                    <div className="badge badge-primary">
+                                        {Number(
+                                            formatEther(BigInt(transfer.value))
+                                        ).toFixed(2)}{" "}
+                                        CELO
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="badge badge-ghost">
+                                        {transfer.blockNumber}
+                                    </div>
+                                </td>
+                                <td>
+                                    {new Date(
+                                        Number(transfer.blockTimestamp) * 1000
+                                    ).toLocaleString()}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+```
+
+### Example Query Definition
+
+The query used in the component above is defined in your GraphQL schema. Here's an example of what it might look like:
+
+```graphql
+query Transfers {
+    transfers(first: 10, orderBy: blockTimestamp, orderDirection: desc) {
+        id
+        from
+        to
+        value
+        blockNumber
+        blockTimestamp
+        transactionHash
+    }
+}
+```
+
+### Customizing the Query
+
+You can modify the query parameters to fetch different data:
+
+```typescript
+// Fetch more transfers
+query Transfers {
+  transfers(first: 20, orderBy: blockTimestamp, orderDirection: desc) {
+    id
+    from
+    to
+    value
+  }
+}
+
+// Filter by address
+query TransfersByAddress($address: String!) {
+  transfers(
+    where: { or: [{ from: $address }, { to: $address }] }
+    orderBy: blockTimestamp
+    orderDirection: desc
+  ) {
+    id
+    from
+    to
+    value
+  }
+}
+```
+
+### Auto-Refresh Data
+
+To automatically refresh the data, you can use the polling option:
+
+```typescript
+const { data } = useGraphClient().useTransfersQuery({
+    pollInterval: 5000, // Refresh every 5 seconds
+});
+```
+
+The Graph Client integration provides:
+
+-   Type-safe queries and responses
+-   Automatic TypeScript type generation
+-   Real-time data updates through polling
+-   Efficient caching and request deduplication
+
+For more complex queries and features, refer to [The Graph's Documentation](https://thegraph.com/docs/en/developing/querying/graphql-api/).
+
+## Graph Client Integration
+
+### Setting up Graph Client
+
+1. First, ensure your subgraph is deployed and you have the endpoint URL.
+
+2. Update your subgraph endpoint in `packages/nextjs/scaffold.config.ts`:
+
+```typescript
+export const scaffoldConfig = {
+    // ... other config
+    subgraphUri: "YOUR_SUBGRAPH_ENDPOINT",
+};
+```
+
+### Creating GraphQL Queries
+
+Create your queries in `packages/nextjs/graphql/transfers.graphql`:
+
+```graphql
+query GetTransfers {
+    transfers(first: 10, orderBy: blockTimestamp, orderDirection: desc) {
+        id
+        from
+        to
+        value
+        blockNumber
+        blockTimestamp
+    }
+}
+```
+
+### Generate Graph Client Types
+
+Run the following command to generate type-safe hooks:
+
+```bash
+cd packages/nextjs
+yarn graphclient build
+```
+
+This will generate types and hooks based on your GraphQL queries.
+
+### Implementing the Transfers Table
+
+Here's a complete example of how to implement a transfers table component using the Graph Client:
+
+```typescript
+// packages/nextjs/app/subgraph/_components/TransfersTable.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { formatEther } from "viem";
+import { GetTransfersDocument, execute } from "~~/.graphclient";
+import { Address } from "~~/components/scaffold-eth";
+
+interface Transfer {
+    id: string;
+    from: string;
+    to: string;
+    value: string;
+}
+
+interface TransfersData {
+    transfers: Transfer[];
+}
+
+const TransfersTable = () => {
+    const [transfersData, setTransfersData] = useState<TransfersData | null>(
+        null
+    );
+    const [error, setError] = useState<Error | null>(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!execute || !GetTransfersDocument) {
+                return;
+            }
+            try {
+                const { data: result } = await execute(
+                    GetTransfersDocument,
+                    {}
+                );
+                setTransfersData(result as TransfersData);
+            } catch (err) {
+                setError(err as Error);
+                console.error("Error fetching transfers:", err);
+            }
+        };
+
+        fetchData();
+        // Set up polling every 10 seconds
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    if (error) {
+        return (
+            <div className="alert alert-error">
+                <span>Error loading transfers. Please try again later.</span>
+            </div>
+        );
+    }
+
+    if (!transfersData?.transfers?.length) {
+        return (
+            <div className="alert alert-info">
+                <span>No transfers found.</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex justify-center items-center mt-10">
+            <div className="overflow-x-auto shadow-2xl rounded-xl">
+                <table className="table bg-base-100 table-zebra">
+                    <thead>
+                        <tr className="rounded-xl">
+                            <th className="bg-primary"></th>
+                            <th className="bg-primary">From</th>
+                            <th className="bg-primary">To</th>
+                            <th className="bg-primary">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {transfersData.transfers.map(
+                            (transfer: Transfer, index: number) => (
+                                <tr key={transfer.id}>
+                                    <th>{index + 1}</th>
+                                    <td>
+                                        <Address address={transfer.from} />
+                                    </td>
+                                    <td>
+                                        <Address address={transfer.to} />
+                                    </td>
+                                    <td>
+                                        <div className="badge badge-primary badge-lg">
+                                            {transfer.value
+                                                ? Number(
+                                                      formatEther(
+                                                          BigInt(transfer.value)
+                                                      )
+                                                  ).toFixed(2)
+                                                : "0.00"}
+                                        </div>
+                                    </td>
+                                </tr>
+                            )
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+export default TransfersTable;
+```
+
+### Key Features
+
+The implementation includes:
+
+-   Type-safe GraphQL queries using generated types
+-   Real-time data updates with 10-second polling
+-   Error handling and loading states
+-   Formatted token values using `viem`'s `formatEther`
+-   Styled using DaisyUI components
+-   Address display using Scaffold-ETH's `Address` component
+
+### Using the Table Component
+
+Add the TransfersTable to your page:
+
+```typescript
+// packages/nextjs/app/subgraph/page.tsx
+import TransfersTable from "./_components/TransfersTable";
+
+export default function SubgraphPage() {
+    return (
+        <div className="container mx-auto">
+            <h1 className="text-4xl font-bold text-center mb-8">
+                Recent Transfers
+            </h1>
+            <TransfersTable />
+        </div>
+    );
+}
+```
+
+### Customizing the Query
+
+You can modify the GraphQL query to fetch different data or add filters:
+
+```graphql
+# Filter by address
+query GetTransfersByAddress($address: String!) {
+    transfers(
+        where: { or: [{ from: $address }, { to: $address }] }
+        orderBy: blockTimestamp
+        orderDirection: desc
+    ) {
+        id
+        from
+        to
+        value
+    }
+}
+
+# Fetch more transfers
+query GetMoreTransfers {
+    transfers(first: 20, orderBy: blockTimestamp, orderDirection: desc) {
+        id
+        from
+        to
+        value
+    }
+}
+```
+
+Remember to run `yarn graphclient build` after modifying your GraphQL queries to regenerate the types.
