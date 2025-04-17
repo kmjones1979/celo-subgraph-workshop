@@ -1,5 +1,7 @@
 # Celo Subgraph Workshop
 
+> This repository is based on [kmjones1979/celo-subgraph-workshop](https://github.com/kmjones1979/celo-subgraph-workshop)
+
 This repo is an example full stack dapp that can be easily deployed to Celo. It comes with an example contract (ERC20) configured for deployment with Hardhat, a frontend integration with React (NextJS) and a working Subgraph which can all be deployed locally or directly to Celo's Alfajores Testnet.
 
 ## 🎯 Project Overview
@@ -287,6 +289,24 @@ npx hardhat verify --network celoAlfajores YOUR_CONTRACT_ADDRESS
 
 You can view your verified contract on [Celoscan Alfajores Explorer](https://alfajores.celoscan.io).
 
+## Deploying to Celo Mainnet
+
+1. Make sure you have real CELO tokens for deployment
+2. Deploy to Celo mainnet:
+
+```bash
+yarn deploy --network celo
+```
+
+3. Verify your contract:
+
+```bash
+cd packages/hardhat
+npx hardhat verify --network celo YOUR_CONTRACT_ADDRESS
+```
+
+You can view your verified contract on [Celoscan Explorer](https://celoscan.io).
+
 ## Shipping to Subgraph Studio 🚀
 
 > NOTE: This step requires [deployment of contract](https://docs.scaffoldeth.io/deploying/deploy-smart-contracts) to live network. Checkout list of [supported networks](https://thegraph.com/docs/networks).
@@ -296,7 +316,7 @@ You can view your verified contract on [Celoscan Alfajores Explorer](https://alf
     ```diff
     ...
     -     network: localhost
-    +     network: celo-alfajores
+    +     network: celo-alfajores    # Use 'celo' for mainnet, 'celo-alfajores' for testnet
           source:
             abi: YourToken
     +       address: "YOUR_CONTRACT_ADDRESS"
@@ -304,7 +324,7 @@ You can view your verified contract on [Celoscan Alfajores Explorer](https://alf
     ...
     ```
 
-    TIP: For `startBlock` you can use block number of your deployed contract, which can be found by visiting deployed transaction hash in block explorer.
+    > Note: Use `network: celo` for mainnet deployments and `network: celo-alfajores` for testnet deployments
 
 2. Create a new subgraph on [Subgraph Studio](https://thegraph.com/studio) and get "SUBGRAPH SLUG" and "DEPLOY KEY".
 
