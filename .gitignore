@@ -30,7 +30,6 @@ dist
 .env.test
 
 # hardhat
-packages/hardhat/deployments
 packages/hardhat/cache
 packages/hardhat/artifacts
 packages/hardhat/typechain
