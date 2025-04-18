@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   webpack: config => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push("pino-pretty", "lokijs", "encoding");
+
+    // Add this to handle @whatwg-node/fetch warnings
+    config.module.rules.push({
+      test: /node_modules\/@whatwg-node\/fetch\/dist\/node-ponyfill\.js$/,
+      use: "null-loader",
+    });
+
     return config;
   },
 };

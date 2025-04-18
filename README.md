@@ -470,6 +470,90 @@ const { data } = useGraphClient().useTransfersQuery({
     - Verify contract addresses
     - Ensure proper schema definition
 
+### Graph Client Integration Warnings
+
+You may encounter these warnings in your Next.js application related to the Graph Client integration:
+
+```
+⚠ ./node_modules/@whatwg-node/fetch/dist/node-ponyfill.js
+Critical dependency: the request of a dependency is an expression
+```
+
+These warnings occur because the `@whatwg-node/fetch` package uses dynamic imports that can cause compatibility issues with Next.js bundling.
+
+#### Solution Options:
+
+1. **Ignore the warnings**: These are warnings, not errors, and your application should still function correctly. You can safely ignore them during development.
+
+2. **Update the existing webpack configuration**:
+
+    The project already has a Next.js configuration file at `packages/nextjs/next.config.ts`. Modify it to handle these warnings:
+
+    ```typescript
+    // packages/nextjs/next.config.ts
+    import type { NextConfig } from "next";
+
+    const nextConfig: NextConfig = {
+        reactStrictMode: true,
+        devIndicators: false,
+        typescript: {
+            ignoreBuildErrors:
+                process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
+        },
+        eslint: {
+            ignoreDuringBuilds:
+                process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
+        },
+        webpack: (config) => {
+            config.resolve.fallback = { fs: false, net: false, tls: false };
+            config.externals.push("pino-pretty", "lokijs", "encoding");
+
+            // Add this to handle @whatwg-node/fetch warnings
+            config.module.rules.push({
+                test: /node_modules\/@whatwg-node\/fetch\/dist\/node-ponyfill\.js$/,
+                use: "null-loader",
+            });
+
+            return config;
+        },
+    };
+
+    const isIpfs = process.env.NEXT_PUBLIC_IPFS_BUILD === "true";
+
+    if (isIpfs) {
+        nextConfig.output = "export";
+        nextConfig.trailingSlash = true;
+        nextConfig.images = {
+            unoptimized: true,
+        };
+    }
+
+    module.exports = nextConfig;
+    ```
+
+    You'll need to install the null-loader package:
+
+    ```bash
+    cd packages/nextjs
+    yarn add --dev null-loader
+    ```
+
+3. **Use a GraphQL client alternative**:
+
+    If the warnings persist and cause issues, consider using another GraphQL client like Apollo Client or urql, which might have better compatibility with Next.js.
+
+4. **Update package.json**:
+
+    Add the following to your Next.js package.json to silence these specific warnings:
+
+    ```json
+    "overrides": {
+      "@whatwg-node/fetch": "^0.9.0"
+    }
+    ```
+
+These warnings are typically related to environment compatibility (Node.js vs browser) and don't necessarily indicate a functional problem with your application.
+
 ### Getting Help
 
 -   Read [The Graph Documentation](https://thegraph.com/docs/en/)
